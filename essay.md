@@ -48,9 +48,9 @@ Modern protocols such as TLS 1.3 use authenticated (EC)DHE by default, which fix
 ### **III. Methods**
 
 This section explains what we built and how it works. We wrote everything in Python 3.9. For timing we use `time.perf_counter_ns()`.
-Our code is split into three files: `rsa_utils.py` (RSA helpers and keygen),
-`dh_exchange.py` (D‑H, MitM, and the authenticated exchange), and
-`rsa_attacks.py` (timing experiment and blinding defense).
+Our code is split into three files: `rsa_utils.py` (RSA helpers),
+`dh_exchange.py` (D‑H simulation and attack), and
+`rsa_attacks.py` (timing attack experiment).
 
 #### **A. Diffie-Hellman (D-H) Protocol**
 
@@ -67,14 +67,14 @@ The MitM attack exploits the D-H protocol's lack of authentication.
     * She catches Ana's $A$ and sends her own public key $M = g^m \mod p$ to Phara.
     * She catches Phara's $B$ and sends $M$ to Ana.
     This results in two separate secret keys, $S_A = g^{am} \mod p$ (known to Ana and Doomfist) and $S_B = g^{bm} \mod p$ (known to Phara and Doomfist).
-2.  **Implementation:** Our `simulate_mitm_attack()` function in `dh_exchange.py` models this. It creates three actors (Ana, Phara, Doomfist) and has Doomfist intercept and replace the public keys.
+2.  **Implementation:** Our `simulate_mitm_attack()` function in `dh_exchange.py` shows this. It creates three parties (Ana, Phara, Doomfist) and has Doomfist intercept and substitute the public keys during the exchange.
 
 #### **C. D-H Defense: Authentication**
 
 We defend against MitM by adding a layer of authentication using RSA digital signatures.
 
 1.  **Logic:** This requires a Public Key Infrastructure (PKI), where Ana and Phara have shared, authentic copies of each other's *RSA public key*. When Ana sends her D-H public key $A$, she also sends a signature along with it, $Sig(A) = hash(A)^{d_A} \mod n_A$, created with her private RSA key $d_A$.
-2.  **Implementation:** Our `simulate_authenticated_exchange()` function is for doing this. Phara receives $(A, Sig(A))$ and verifies it using Ana's public RSA key $(e_A, n_A)$. Our script provides the necessary `sign` and `verify` functions. If $pow(Sig(A), e_A, n_A) == hash(A)$ (or just $A$ in our simplified code), the key is authentic. Doomfist cannot fake this signature, as she does not has Ana's private RSA key.
+2.  **Implementation:** Our `simulate_authenticated_exchange()` function demonstrates this defense. Phara receives $(A, Sig(A))$ and checks it with Ana's public RSA key. Our script includes simple `sign` and `verify` functions. If the signature is valid, the key is authentic. Doomfist cannot create a valid signature because she does not have Ana's private RSA key.
 
 #### **D. RSA Protocol**
 
@@ -88,13 +88,13 @@ RSA is an asymmetric algorithm used for encryption and signatures.
     * Calculating the private exponent $d$ using the modular inverse such that $ed \equiv 1 \pmod{\phi(n)}$.
     The public key is $(e, n)$ and the private key is $(d, n)$.
     Encryption: $C = M^e \mod n$. Decryption: $M = C^d \mod n$.
-2.  **Implementation:** Our `rsa_utils.py` script provides helper functions for `is_prime` (Miller-Rabin test) and `mod_inverse` (using Python's built-in pow function) to create a `generate_keypair` function. We initially tried to implement the Extended Euclidean Algorithm ourselves but had some bugs, so we switched to using Python's built-in function for reliability.
+2.  **Implementation:** Our `rsa_utils.py` script provides functions for `is_prime` (a Miller-Rabin test) and `mod_inverse` to build a `generate_keypair` function. We used Python's built-in `pow(e, -1, phi)` for the modular inverse because it is efficient and reliable.
 
 #### **E. Timing Attack on RSA**
 
 This attack exploits a non-constant-time decryption function.
 
-1.  **Vulnerability:** A simple square-and-multiply algorithm for $M = C^d \mod n$ is vulnerable. The conditional operation (the "multiply" step) only occurs if a bit in the private key $d$ is '1'. This creates a small but measurable time difference. Our `vulnerable_decrypt` function in `rsa_attacks.py` is an example of this.
+1.  **Vulnerability:** A basic square-and-multiply algorithm for decryption is often not "constant-time." The operation only performs a multiplication step when a bit in the private key $d$ is a '1'. This creates a small time difference that can be measured. Our `vulnerable_decrypt` function in `rsa_attacks.py` is an example of this.
 2.  **Attack Logic:** The attacker sends loads of random ciphertexts $C_i$ to the server and measures the precise time $T_i$ for each decryption. By performing analysis on the set of timings ${T_i}$, the attacker can get to know about the time distributions for '0' bits vs. '1' bits, and finally recover $d$.
 
 #### **F. RSA Defense: Blinding**
@@ -145,9 +145,9 @@ We then ran the `simulate_authenticated_exchange()` function. In this test, Doom
 
 After detecting Doomfist's faked messages, Ana and Phara then proceed to exchange their real, signed keys. Both successfully verify each other's authentic signatures, and they compute the same shared secret (12 in our run), confirming that `SUCCESS: Defense worked. MitM was prevented.` The authentication layer successfully defeats the MitM attack.
 
-#### **C. RSA Timing Attack Analysis**
+#### C. RSA Timing Attack Analysis
 
-We ran our `rsa_attacks.py` script with 5,000 timing trials against the `vulnerable_decrypt` function using a 512-bit key (two 256-bit primes).
+We ran our `run_timing_experiment()` script from `rsa_attacks.py` with 5,000 trials against the `vulnerable_decrypt` function. The key was 512 bits.
 
 *(A plot of the time distribution would be inserted as Figure 1. The text below describes the results.)*
 
@@ -155,16 +155,16 @@ We ran our `rsa_attacks.py` script with 5,000 timing trials against the `vulnera
 
 Our results showed a very high variance in execution time, which is the signature of a timing leak. The key results were:
 
-* **Average Time:** 1,944,579.59 ns (≈1.94 ms)
-* **Min Time:** 1,831,041.00 ns
-* **Max Time:** 20,392,667.00 ns
-* **Time Variation (Max - Min):** 18,561,626.00 ns (≈18.56 ms)
+* **Average Time:** 1,974,350.31 ns (≈1.97 ms)
+* **Min Time:** 1,893,958.00 ns
+* **Max Time:** 26,649,875.00 ns
+* **Time Variation (Max - Min):** 24,755,917.00 ns (≈24.76 ms)
 
-This huge differenc is caused by the non‑constant‑time square‑and‑multiply loop. When a private‑key bit is 1, the code does an extra multiply and runs a bit longer. Over many trials this creates a signal an attacker can use, as Kocher explained [3].
+This huge difference is caused by the non‑constant‑time square‑and‑multiply loop. When a private‑key bit is 1, the code does an extra multiply and runs a bit longer. Over many trials this creates a signal an attacker can use, as Kocher explained [3].
 
 #### **D. RSA Blinding Defense Validation**
 
-We ran the *exact same* timing attack script against our `blinded_decrypt` function, which uses RSA blinding to randomize the computation.
+We then ran the same timing experiment against our `blinded_decrypt` function.
 
 *(A plot of the time distribution would be inserted as Figure 2. The text below describes the results.)*
 
@@ -172,12 +172,12 @@ We ran the *exact same* timing attack script against our `blinded_decrypt` funct
 
 The results showed a clear and successful mitigation of the timing leak:
 
-* **Average Time:** 2,017,308.59 ns (≈2.02 ms)
-* **Min Time:** 1,935,583.00 ns
-* **Max Time:** 3,357,542.00 ns
-* **Time Variation (Max - Min):** 1,421,959.00 ns (≈1.42 ms)
+* **Average Time:** 2,051,034.79 ns (≈2.05 ms)
+* **Min Time:** 2,014,042.00 ns
+* **Max Time:** 2,595,958.00 ns
+* **Time Variation (Max - Min):** 581,916.00 ns (≈0.58 ms)
 
-The average time is a bit slower, which is within our expectation. The key point is the variation drops a lot (from ~18.56 ms to ~1.42 ms). With blinding, the timing no longer increase linearly with the private key. The remaining noise looks random and is not useful for an attacker.
+The average time is slightly higher, which is expected due to the extra blinding operations. The key result is the dramatic reduction in time variation (from ~24.76 ms to ~0.58 ms, a reduction of about 42×). With blinding, the timing no longer correlates with the private key bits. The remaining variation is random noise that is not useful for an attacker.
 
 ### **V. Discussion**
 

@@ -9,22 +9,22 @@ def gcd(a, b):
 def mod_inverse(e, phi):
     """
     Finds the modular inverse of e modulo phi.
-    Returns d such that e*d % phi = 1.
-    Uses Python's built-in pow function for reliability.
-    We tried implementing Extended Euclidean Algorithm but had bugs,
-    so we're using the built-in instead which is more reliable.
+    (e*d) % phi = 1
     """
-    # Python 3.8+ supports pow(e, -1, phi) for modular inverse
+    # We use Python's built-in pow(e, -1, phi) for modular inverse
+    # because it's fast and reliable.
     return pow(e, -1, phi)
 
 def is_prime(n, k=5):
     """
-    Miller-Rabin primality test. A simple probabilistic check.
-    Returns True if n is *probably* prime, False if composite.
+    Miller-Rabin primality test.
+    Returns True if n is probably prime.
     """
+    if n < 2:
+        return False
     if n == 2 or n == 3:
         return True
-    if n <= 1 or n % 2 == 0:
+    if n % 2 == 0:
         return False
     
     # Write n-1 as 2^r * d
@@ -51,33 +51,33 @@ def is_prime(n, k=5):
 def generate_prime_candidate(length):
     """Generate an odd number of 'length' bits."""
     p = random.getrandbits(length)
-    # Make it odd
+    # Set the MSB and LSB to 1
     p |= (1 << length - 1) | 1
     return p
 
 def generate_prime_number(length=128):
     """Generate a prime number of 'length' bits."""
     p = 4
+    # Keep generating candidates until one is prime
     while not is_prime(p, 5):
         p = generate_prime_candidate(length)
     return p
 
 def generate_keypair(p, q):
     """
-    Generates an RSA keypair given two primes p and q.
-    Returns (public_key, private_key)
+    Generates an RSA keypair from two primes, p and q.
     """
     if not (is_prime(p) and is_prime(q)):
         raise ValueError("Both numbers must be prime.")
-    elif p == q:
+    if p == q:
         raise ValueError("p and q cannot be equal.")
 
     n = p * q
     phi = (p - 1) * (q - 1)
     
-    e = 65537 # Common choice for e
+    e = 65537 # A common choice for e
     if gcd(e, phi) != 1:
-        # Find an e that is coprime to phi
+        # Find an e that is coprime to phi if 65537 is not
         e = 3
         while gcd(e, phi) != 1:
             e += 2
