@@ -4,14 +4,9 @@ This folder contains the implementation code for demonstrating attacks on Diffie
 
 ## Files
 
-- `rsa_utils.py` - Helper functions for RSA key generation (prime testing, modular inverse, etc.)
+- `rsa_utils.py` - Utils for RSA key generation
 - `dh_exchange.py` - Implementation of Diffie-Hellman protocol, MitM attack, and authentication defense
 - `rsa_attacks.py` - Implementation of RSA timing attack and blinding defense
-
-## Requirements
-
-- Python 3.8 or higher
-- No external libraries required (uses only standard library)
 
 ## How to Run
 

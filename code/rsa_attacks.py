@@ -83,7 +83,7 @@ def run_timing_experiment(decrypt_function, public_key, private_key, num_trials=
     
     # For the vulnerable function, the variation will be high.
     # For the blinded function, the variation will be lower and random.
-    return avg_time, max_time - min_time
+    return avg_time, max_time - min_time, times
 
 
 if __name__ == "__main__":
