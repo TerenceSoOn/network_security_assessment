@@ -56,23 +56,23 @@
 
 \author{
 \IEEEauthorblockN{Jiachen Pan}
-\IEEEauthorblockA{Student ID: 20233802046}
+\IEEEauthorblockA{\textit{University of Aberdeen} \\ Student ID: 50091098}
 \and
 \IEEEauthorblockN{Junlin Li}
-\IEEEauthorblockA{Student ID: 20233802058}
+\IEEEauthorblockA{\textit{University of Aberdeen} \\ Student ID: 50091104}
 \and
 \IEEEauthorblockN{Yueshen Wang}
-\IEEEauthorblockA{Student ID: 20233802018}
+\IEEEauthorblockA{\textit{University of Aberdeen} \\ Student ID: 50091084}
 \and
 \IEEEauthorblockN{Junrui Liang}
-\IEEEauthorblockA{Student ID: 20233802068}
+\IEEEauthorblockA{\textit{University of Aberdeen} \\ Student ID: 50091109}
 }
 
 \maketitle
 \thispagestyle{fancy}
 
 \begin{abstract}
-Secure key exchange is really important for internet security today. The Diffie-Hellman (D-H) and RSA protocols are two common methods for establishing shared secrets over insecure networks like the internet. However, both protocols have known flaws that can be used to launch attacks. This report will focus on two major attacks: the Man-in-the-Middle (MitM) attack on D-H and the timing attack on RSA. We implemented both protocols from scratch in Python and then demonstrated how these attacks work in practice. We also implemented defensive techniques to protect against these attacks: adding RSA digital signatures to authenticate D-H key exchange, and using RSA blinding to prevent timing attacks. Our experimental results show that both attacks are practical and can be successfully executed, and the defenses we implemented can effectively stop them. Specifically, our blinding defense reduced the timing variation of RSA decryption by approximately 42 times, effectively eliminating the side-channel. We conclude by comparing these two different types of attacks and defenses, showing how protocol-level security (authentication) differs from implementation-level security (constant-time operations).
+Secure key exchange is vital for internet security. Diffie-Hellman (D-H) and RSA are common protocols for establishing shared secrets but have known vulnerabilities. This report analyzes the Man-in-the-Middle (MitM) attack on D-H and the timing attack on RSA. We implemented both protocols in Python to demonstrate these attacks and their respective defenses: RSA digital signatures for D-H authentication and blinding for RSA. Experimental results confirm the attacks' practicality and the defenses' effectiveness. Specifically, our blinding defense reduced RSA decryption timing variation by approximately 42 times, eliminating the side-channel. We conclude by comparing these attacks and defenses, highlighting the distinction between protocol-level security (authentication) and implementation-level security (constant-time operations).
 \end{abstract}
 
 \section{Introduction}
@@ -82,10 +82,10 @@ This report studies how two classic key exchange ideas can be attacked and how t
 These protocols are strong, but the basic versions have well-known gaps. Unauthenticated D‑H is open to a man‑in‑the‑middle (MitM) attacker. A simple RSA implementation can also leak information through its running time (a timing side‑channel). Our work is practical and hands‑on:
 
 \begin{enumerate}
-\item We implement D‑H and RSA in Python.
-\item We show a MitM attack on unauthenticated D‑H.
-\item We measure a clear timing signal on a vulnerable RSA decryption.
-\item We add two defenses: signatures to authenticate D‑H, and blinding for RSA.
+\item We compared potential attacks and defenses for both protocols.
+\item We selected and implemented the MitM attack for D-H and the Timing attack for RSA.
+\item We implemented D‑H and RSA from scratch in Python to demonstrate these vulnerabilities.
+\item We implemented and verified two defenses: signatures to authenticate D‑H, and blinding for RSA.
 \end{enumerate}
 
 Section II gives short background. Section III explains our code. Section IV shows results from our runs. Section V compares the two attacks and defenses. Section VI concludes and suggests small next steps.
@@ -118,7 +118,7 @@ Public CVEs show many real‑world cases. For example, CVE‑2018‑5383 (the KN
 \subsection{Broader Attack Surface and Defensive Frameworks}
 While we only show one attack per protocol, there are others. D‑H can suffer from Logjam, which exploits the use of weak or commonly shared prime numbers to pre-compute data and break connections. RSA can leak through other side‑channels (e.g., power) or be broken by bad key generation.
 
-To defend, the \textbf{MITRE D3FEND} framework lists countermeasures. Our D‑H defense matches ``Client‑server Mutual Authentication'' (D3‑CSMA) \cite{mitre_d3fend}. Our RSA defense (blinding) is a form of software obfuscation that removes the timing correlation with the secret key. Modern protocols such as TLS 1.3 use authenticated (EC)DHE by default, which fixes the MitM problem we demonstrate.
+To defend, the \textbf{MITRE D3FEND} framework lists countermeasures. Our D‑H defense aligns with ``Certificate-based Authentication'' (D3-CBAN) \cite{mitre_d3fend}, which relies on validating digital signatures to ensure identity. Our RSA defense (blinding) is a form of software obfuscation that removes the timing correlation with the secret key. Modern protocols such as TLS 1.3 use authenticated (EC)DHE by default, which fixes the MitM problem we demonstrate.
 
 \section{Methods}
 
@@ -126,6 +126,17 @@ This section explains what we built and how it works. We wrote everything in Pyt
 Our code is split into three files: \texttt{rsa\_utils.py} (RSA helpers),
 \texttt{dh\_exchange.py} (D‑H simulation and attack), and
 \texttt{rsa\_attacks.py} (timing attack experiment).
+
+\subsection{Selection of Attacks and Defenses}
+In accordance with the project requirements, we evaluated multiple attack and defense vectors before selecting the ones to implement.
+
+\subsubsection{Diffie-Hellman Selection}
+For the attack, we compared the Man-in-the-Middle (MitM) attack against the Logjam attack. While Logjam is powerful, it requires pre-computation on common primes which is computationally expensive to simulate. We selected the MitM attack because it fundamentally exposes the lack of authentication in the basic protocol.
+For the defense, we compared using fixed static keys against digital signatures. Fixed keys reduce flexibility, so we selected RSA Digital Signatures (Certificate-based Authentication) as it is the standard solution in protocols like TLS.
+
+\subsubsection{RSA Selection}
+For the attack, we compared the Timing Attack against the Bleichenbacher (Padding Oracle) attack. We selected the Timing Attack because it demonstrates how implementation details (side-channels) can compromise mathematically secure algorithms.
+For the defense, we compared Constant-Time Implementation against Blinding. Writing truly constant-time code in high-level languages like Python is difficult due to interpreter optimizations. We selected Blinding because it provides a robust algorithmic defense that is effective even in high-level languages.
 
 \subsection{Threat Model}
 
@@ -154,6 +165,7 @@ Doomfist cannot directly read the server's memory to retrieve the private key $d
 The D-H protocol is a key \textit{agreement} scheme.
 
 \subsubsection{Mathematics}
+The D-H protocol is a key \textit{agreement} scheme based on the principles of public-key cryptography described in the course lectures \cite{lecture_asym}.
 Two persons, Ana and Phara, agree on a large prime $p$ and a generator $g$.
 Ana generates a secret private key $a \in [1, p-2]$ and computes public key $A = g^a \bmod p$.
 Phara does the same, generating $b$ and $B = g^b \bmod p$. They exchange $A$ and $B$.
@@ -226,22 +238,18 @@ This results in two separate secret keys, $S_A = g^{am} \bmod p$ (known to Ana a
 Our \texttt{simulate\_mitm\_attack()} function in \texttt{dh\_exchange.py} shows this. It creates three parties (Ana, Phara, Doomfist) and has Doomfist intercept and substitute the public keys during the exchange. The core logic of the interception is shown in Listing \ref{lst:mitm_code}.
 
 % --- FIXED: Manually broke long lines so they fit in IEEE column ---
-\begin{lstlisting}[caption={MitM Attack Logic in Python}, label={lst:mitm_code}]
-# Doomfist intercepts the exchange
-print("Doomfist intercepts and replaces keys...")
+\begin{lstlisting}[caption={MitM Attack Logic (Pseudo-code)}, label={lst:mitm_code}]
+1. Doomfist intercepts the exchange and replaces keys.
 
-# Ana computes secret with Doomfist's key M
-s_ana = get_shared_secret(m_public, a_private)
+2. Ana computes secret with Doomfist's key M:
+   s_ana = compute_shared_secret(m_public, a_private)
 
-# Phara computes secret with Doomfist's key M
-s_phara = get_shared_secret(m_public, 
-    b_private)
+3. Phara computes secret with Doomfist's key M:
+   s_phara = compute_shared_secret(m_public, b_private)
 
-# Doomfist computes secrets with both
-s_doomfist_ana = get_shared_secret(a_public, 
-    m_private)
-s_doomfist_phara = get_shared_secret(b_public, 
-    m_private)
+4. Doomfist computes secrets with both:
+   s_doomfist_ana = compute_shared_secret(a_public, m_private)
+   s_doomfist_phara = compute_shared_secret(b_public, m_private)
 \end{lstlisting}
 
 \subsection{D-H Defense: Authentication}
@@ -252,7 +260,7 @@ We defend against MitM by adding a layer of authentication using RSA digital sig
 This requires a Public Key Infrastructure (PKI), where Ana and Phara have shared, authentic copies of each other's \textit{RSA public key}.
 When Ana sends her D-H public key $A$, she also sends a signature along with it, $Sig(A) = hash(A)^{d_A} \bmod n_A$, created with her private RSA key $d_A$.
 
-From the textbook, a \textbf{Digital Signature} is a mathematical scheme for verifying the authenticity of digital messages or documents. It gives us:
+Following the standard workflow for authentication \cite{lecture_sig}, we use a \textbf{Digital Signature} to verify the authenticity of digital messages. As defined in our course material, this provides:
 \begin{itemize}
     \item \textbf{Authentication:} We know who created the message.
     \item \textbf{Non-repudiation:} The sender cannot deny sending the message later.
@@ -297,20 +305,20 @@ Our \texttt{vulnerable\_decrypt} function in \texttt{rsa\_attacks.py} is an exam
 
 The algorithm iterates through the bits of the private exponent $d$. For every bit, a squaring operation is performed. However, the multiplication operation $result = (result \times ciphertext) \bmod n$ is only executed if the current bit is '1'. This conditional branch creates a direct correlation between the execution time and the Hamming weight (number of 1s) of the private key.
 
-\begin{lstlisting}[caption={Vulnerable RSA Decryption}, label={lst:vuln_rsa}]
-def vulnerable_decrypt(ciphertext, private_key):
-    d, n = private_key
-    result = 1
-    d_bin = bin(d)[2:] # Binary string of d
+\begin{lstlisting}[caption={Vulnerable RSA Decryption (Pseudo-code)}, label={lst:vuln_rsa}]
+function vulnerable_decrypt(ciphertext, private_key):
+    1. get d and n from private_key
+    2. initialize result = 1
+    3. convert d to binary string d_bin
     
-    for bit in d_bin:
-        # Square step (always happens)
-        result = (result * result) % n
-        if bit == '1':
-            # Multiply step (conditional)
-            # This branch causes the timing leak
-            result = (result * ciphertext) % n
-    return result
+    4. for each bit in d_bin:
+        a. square step (always happens):
+           result = (result * result) % n
+        b. if bit is '1':
+           multiply step (conditional):
+           result = (result * ciphertext) % n
+           
+    5. return result
 \end{lstlisting}
 
 \begin{figure}[htbp]
@@ -366,27 +374,28 @@ where $r^{-1}$ is the modular inverse of $r$ modulo $n$.
 Our \texttt{blinded\_decrypt} function in \texttt{rsa\_attacks.py} implements this (Listing \ref{lst:blinded_rsa}). The time to perform this operation is now dominated by the random $C'$, not the original $C$. The correlation between the timing and the bits of $d$ is broken.
 
 % --- FIXED: Manually broke long lines so they fit in IEEE column ---
-\begin{lstlisting}[caption={Blinded RSA Decryption}, label={lst:blinded_rsa}]
-def blinded_decrypt(ciphertext, pub_key, priv_key):
-    e, n = pub_key
-    d, n_priv = priv_key
+\begin{lstlisting}[caption={Blinded RSA Decryption (Pseudo-code)}, label={lst:blinded_rsa}]
+function blinded_decrypt(ciphertext, pub_key, priv_key):
+    1. get e, n from pub_key
+    2. get d, n from priv_key
     
-    # 1. Generate random blinding factor r
-    r = random.randint(2, n - 1)
+    3. generate random blinding factor r
+       (where 1 < r < n)
     
-    # 2. Blind: C' = C * r^e mod n
-    c_prime = (ciphertext * pow(r, e, n)) % n
+    4. blind the ciphertext:
+       c_prime = (ciphertext * (r^e mod n)) mod n
     
-    # 3. Decrypt blinded: M' = (C')^d mod n
-    # Even if this is vulnerable, input is random
-    m_prime = vulnerable_decrypt(c_prime, 
-        priv_key)
+    5. decrypt the blinded ciphertext:
+       m_prime = vulnerable_decrypt(c_prime, priv_key)
+       (input is now random, masking timing)
     
-    # 4. Unblind: M = M' * r^-1 mod n
-    r_inv = pow(r, -1, n)
-    m = (m_prime * r_inv) % n
+    6. calculate modular inverse of r:
+       r_inv = r^(-1) mod n
+       
+    7. unblind to get message:
+       m = (m_prime * r_inv) mod n
     
-    return m
+    8. return m
 \end{lstlisting}
 
 \subsection{Experimental Setup}
@@ -515,7 +524,7 @@ Impact & Breaks a session & Leaks private key (breaks many future sessions) \\
 
 \subsection{Comparison of Defensive Methods (Authentication vs. Blinding)}
 
-The defenses are similarly different in their approach, each tailored to the specific attack (Table \ref{tab:defense_comparison}).
+The defenses are similarly different in their approach. Our D-H defense implements Certificate-based Authentication (D3-CBAN) to secure the protocol level, whereas our RSA defense uses Blinding to secure the implementation level (Table \ref{tab:defense_comparison}).
 
 \begin{table}[htbp]
 \caption{Comparison of Defensive Methods}
@@ -566,17 +575,16 @@ For \textbf{future work}:
 \section*{Authors' Contributions}
 
 \begin{itemize}
-\item \textbf{Jiachen Pan (20233802046):}
-  Project lead. Implemented the core logic for both Diffie–Hellman and RSA protocols, including the attacks and defenses. Drafted the majority of the paper (Methods, Results, Discussion) and managed the overall LaTeX structure.
+\item \textbf{Jiachen Pan (50091098):}
+  Project lead. Implemented the core logic for both Diffie-Hellman and RSA protocols, including the attacks and defenses. Drafted the majority of the paper (Methods, Results, Discussion) and managed the overall LaTeX structure.
 
-\item \textbf{Junlin Li (20233802058):}
-  Focused on refining and polishing the essay content. Reviewed the Introduction and Related Work sections to ensure clarity and appropriate academic tone.
+\item \textbf{Junlin Li (50091104):}
+  Drafted the Introduction and Related Work sections. Managed the bibliography and citations to ensure accurate referencing. Assisted the comparison of defensive methods.
+\item \textbf{Yueshen Wang (50091084):}
+  Responsible for refining the essay content and the final LaTeX formatting. Ensured the paper complied with IEEE conference standards, including figure placement and table formatting.
 
-\item \textbf{Yueshen Wang (20233802018):}
-  Responsible for the final LaTeX formatting. Ensured the paper complied with IEEE conference standards, including figure placement, table formatting, and bibliography management.
-
-\item \textbf{Junrui Liang (20233802068):}
-  Assisted with the Python implementation. Helped debug the RSA key generation and timing measurement scripts, and verified the experimental results.
+\item \textbf{Junrui Liang (50091109):}
+  Assisted with the Python implementation. Helped debug the RSA key generation and timing measurement scripts. Verified the experimental results for the RSA timing attack.
 \end{itemize}
 
 All authors reviewed and approved the final paper. Each author contributed to code testing and small fixes during integration.
@@ -585,8 +593,10 @@ All authors reviewed and approved the final paper. Each author contributed to co
 \bibitem{diffie1976} W. Diffie and M. E. Hellman, ``New directions in cryptography,'' \textit{IEEE Transactions on Information Theory}, vol. 22, no. 6, pp. 644-654, Nov. 1976.
 \bibitem{rivest1978} R. L. Rivest, A. Shamir, and L. Adleman, ``A method for obtaining digital signatures and public-key cryptosystems,'' \textit{Communications of the ACM}, vol. 21, no. 2, pp. 120-126, Feb. 1978.
 \bibitem{kocher1996} P. Kocher, ``Timing Attacks on Implementations of Diffie-Hellman, RSA, DSS, and Other Systems,'' in \textit{Advances in Cryptology — CRYPTO '96}, Berlin, Heidelberg, 1996, pp. 104–113.
-\bibitem{mitre_attack} MITRE. \textit{ATT\&CK T1557: Man-in-the-Middle}. [Online]. Available: https://attack.mitre.org/techniques/T1557/
-\bibitem{mitre_d3fend} MITRE. \textit{D3FEND D3-CSMA: Client-server Mutual Authentication}. [Online]. Available: https://d3fend.mitre.org/technique/d3fend/D3-CSMA/
+\bibitem{mitre_attack} MITRE. \textit{ATT\&CK T1557: Adversary-in-the-Middle}. [Online]. Available: https://attack.mitre.org/techniques/T1557/
+\bibitem{mitre_d3fend} MITRE. \textit{D3FEND D3-CBAN: Certificate-based Authentication}. [Online]. Available: https://d3fend.mitre.org/technique/d3f:Certificate-basedAuthentication/
+\bibitem{lecture_asym} University of Aberdeen, ``Lecture 5: Asymmetric Encryption,'' JC3012 Network Security Technology, 2025.
+\bibitem{lecture_sig} University of Aberdeen, ``Lecture 6: Digital Signatures,'' JC3012 Network Security Technology, 2025.
 \end{thebibliography}
 
 \end{document}
