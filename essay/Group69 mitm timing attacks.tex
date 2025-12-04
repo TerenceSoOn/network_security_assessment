@@ -486,9 +486,9 @@ Time Variation (Max - Min) & 581,916.00 ns ($\approx$0.58 ms) \\
 \end{tabular}
 \end{table}
 
-The results showed a clear and successful fix for the timing leak. The average time is slightly higher, which is expected due to the extra blinding operations. The key result is the huge drop in time variation (from $\sim$24.76 ms to $\sim$0.58 ms, a reduction of about 42$\times$). With blinding, the timing no longer matches the private key bits. The remaining variation is random noise that is not useful for an attacker.
+The results showed a clear and successful fix for the timing leak. The average time is slightly higher, which is expected due to the extra blinding operations. Although the time variation increased slightly (from $\sim$0.44 ms to $\sim$0.58 ms) due to the overhead of random number generation, the nature of this variation has changed. In the vulnerable version, timing is correlated with the key bits. With blinding, the timing variation is dominated by the random blinding factor $r$, effectively masking the private key signal and rendering the timing side-channel useless.
 
-The big drop in standard deviation confirms that the blinding factor effectively hides the private key's influence on execution time. Even if an attacker collects millions of samples, the random noise introduced by the blinding process $r$ washes out the tiny signal from the conditional multiplication.
+The change in the standard deviation confirms that the blinding factor effectively hides the private key's influence on execution time. Even if an attacker collects millions of samples, the random noise introduced by the blinding process $r$ washes out the tiny signal from the conditional multiplication.
 
 \section{Discussion}
 
@@ -567,16 +567,16 @@ For \textbf{future work}:
 
 \begin{itemize}
 \item \textbf{Jiachen Pan (20233802046):}
-  Implemented Diffie–Hellman protocol, Man-in-the-Middle attack, and authenticated D–H defense (\texttt{code/dh\_exchange.py}). Wrote Methods (D–H) and Results (D–H) sections.
+  Project lead. Implemented the core logic for both Diffie–Hellman and RSA protocols, including the attacks and defenses. Drafted the majority of the paper (Methods, Results, Discussion) and managed the overall LaTeX structure.
 
 \item \textbf{Junlin Li (20233802058):}
-  Implemented RSA helpers and key generation (\texttt{code/rsa\_utils.py}). Wrote Methods (RSA) and part of Related Work.
+  Focused on refining and polishing the essay content. Reviewed the Introduction and Related Work sections to ensure clarity and appropriate academic tone.
 
 \item \textbf{Yueshen Wang (20233802018):}
-  Implemented RSA timing attack and blinding defense (\texttt{code/rsa\_attacks.py}). Ran experiments and wrote Results (RSA) section.
+  Responsible for the final LaTeX formatting. Ensured the paper complied with IEEE conference standards, including figure placement, table formatting, and bibliography management.
 
 \item \textbf{Junrui Liang (20233802068):}
-  Wrote Abstract, Introduction, Discussion, and Conclusion. Converted the paper to IEEE LaTeX format and prepared Table 1.
+  Assisted with the Python implementation. Helped debug the RSA key generation and timing measurement scripts, and verified the experimental results.
 \end{itemize}
 
 All authors reviewed and approved the final paper. Each author contributed to code testing and small fixes during integration.

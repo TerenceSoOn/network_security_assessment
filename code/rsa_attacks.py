@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     # 2. Test the vulnerable function
     print(f"\nRunning timing experiment on VULNERABLE function...")
-    avg_vuln, var_vuln = run_timing_experiment(
+    avg_vuln, var_vuln, _ = run_timing_experiment(
         vulnerable_decrypt, 
         public_key, 
         private_key,
@@ -114,7 +114,7 @@ if __name__ == "__main__":
         return blinded_decrypt(ciphertext, public_key, private_key)
 
     print(f"\nRunning timing experiment on BLINDED function...")
-    avg_blind, var_blind = run_timing_experiment(
+    avg_blind, var_blind, _ = run_timing_experiment(
         wrapper_blinded, 
         public_key, 
         private_key,
