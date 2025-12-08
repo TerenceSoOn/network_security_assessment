@@ -72,7 +72,7 @@
 \thispagestyle{fancy}
 
 \begin{abstract}
-Secure key exchange is vital for internet security. Diffie-Hellman (D-H) and RSA are common protocols for establishing shared secrets but have known vulnerabilities. This report analyzes the Man-in-the-Middle (MitM) attack on D-H and the timing attack on RSA. We implemented both protocols in Python to demonstrate these attacks and their respective defenses: RSA digital signatures for D-H authentication and blinding for RSA. Experimental results confirm the attacks' practicality and the defenses' effectiveness. Specifically, our blinding defense reduced RSA decryption timing variation by approximately 42 times, eliminating the side-channel. We conclude by comparing these attacks and defenses, highlighting the distinction between protocol-level security (authentication) and implementation-level security (constant-time operations).
+Secure key exchange is vital for internet security. Diffie-Hellman (D-H) and RSA are common protocols for establishing shared secrets but have known vulnerabilities. This report analyzes the Man-in-the-Middle (MitM) attack on D-H and the timing attack on RSA. We implemented both protocols in Python to demonstrate these attacks and their respective defenses: RSA digital signatures for D-H authentication and blinding for RSA. Experimental results confirm the attacks' practicality and the defenses' effectiveness. Specifically, our blinding defense reduced RSA decryption timing variation in our experiments, disrupting the timing side-channel. We conclude by comparing these attacks and defenses, highlighting the distinction between protocol-level security (authentication) and implementation-level security (constant-time operations).
 \end{abstract}
 
 \section{Introduction}
@@ -94,7 +94,7 @@ In the modern digital world, secure communication is the backbone of services we
 
 Nowadays, secure communication is a core part of services we use every day, like online banking (HTTPS) and VPNs. These services rely on key exchange protocols to make encrypted tunnels. If these protocols are broken, hackers can steal private data, like credit card numbers or passwords, or even pretend to be trusted servers.
 
-To understand the problem better, let's look at a simple story. Imagine Alice and Bob want to talk in private, but they are in a crowded room where everyone can hear them (this is like the internet). They need a way to agree on a secret code without anyone else knowing what it is. If they just shout "Let's use code word BLUE!", then everyone knows the code. This is why they need a special math trick (a protocol) to agree on "BLUE" without actually saying "BLUE". But if a bad guy, Mallory, stands between them and pretends to be Alice to Bob, and Bob to Alice, he can trick them both. This is the Man-in-the-Middle attack we study.
+To understand the problem better, let's look at a simple story. Imagine Alice and Bob want to talk in private, but they are in a crowded room where everyone can hear them (this is like the internet). They need a way to agree on a secret code without anyone else knowing what it is. If they just shout "Let's use code word BLUE!", then everyone knows the code. This is why they need a special math trick (a protocol) to agree on "BLUE" without actually saying "BLUE". But if a bad guy, Doomfist, stands between them and pretends to be Alice to Bob, and Bob to Alice, he can trick them both. This is the Man-in-the-Middle attack we study.
 
 We also use some important words from our textbook. \textbf{Cryptography} is the science of writing in secret code. It has three main goals, often called the \textbf{CIA Triad}:
 \begin{itemize}
@@ -111,7 +111,7 @@ The weaknesses we study are well known in applied cryptography, and there is a l
 \subsection{Foundational Protocols and Attack Vectors}
 The MitM attack on D‑H is a classic example of why authentication is needed. The basic D‑H protocol \cite{diffie1976} does not verify who sent a message, so an attacker in the middle can relay and replace keys and stay hidden. The \textbf{MITRE ATT\&CK} framework calls this T1557 (``Man‑in‑the‑Middle'') \cite{mitre_attack}, which matches the attack we simulate in \texttt{dh\_exchange.py}.
 
-Timing side‑channel attacks, explained by Paul Kocher in his famous 1996 paper \cite{kocher1996}, are more tiny. Kocher showed that by carefully measuring the time it takes for a crypto device to do private key operations, an attacker can guess the key itself. This was a big discovery that showed we need to look at code, not just math. They use information that leaks from the actual implementation behaviors, not from the math. In RSA, a simple square‑and‑multiply exponentiation takes a little bit longer when a private‑key bit is 1 than 0. By timing many decryptions, an attacker can learn about the key.
+Timing side‑channel attacks, explained by Paul Kocher in his famous 1996 paper \cite{kocher1996}, are subtler. Kocher showed that by carefully measuring the time it takes for a crypto device to do private key operations, an attacker can guess the key itself. This was a big discovery that showed we need to look at code, not just math. They use information that leaks from the actual implementation behaviors, not from the math. In RSA, a simple square‑and‑multiply exponentiation takes a little bit longer when a private‑key bit is 1 than 0. By timing many decryptions, an attacker can learn about the key.
 
 Public CVEs show many real‑world cases. For example, CVE‑2018‑5383 (the KNOB attack) is a MitM issue in Bluetooth. CVE‑2021‑3011 affected the \texttt{cryptlib} library and could leak information through timing. This shows that implementation issues keep appearing and need proper defenses.
 
@@ -178,7 +178,7 @@ The security of this protocol relies on the Discrete Logarithm Problem (DLP). Th
 \subsubsection{Implementation}
 Our \texttt{dh\_exchange.py} script implements this. For demonstration, it uses small, well-known parameters ($p=23, g=5$) to make the results verifiable by hand.
 
-Here is the step-by-step math we used in our code:
+Here is a small illustrative example using fixed numbers (for explanation only; the script chooses random secrets on each run):
 \begin{enumerate}
     \item \textbf{Setup:} Everyone agrees on $p=23$ and $g=5$.
     \item \textbf{Ana's Turn:}
@@ -202,7 +202,7 @@ Here is the step-by-step math we used in our code:
         \item Phara takes Ana's $8$ and computes $S = 8^{15} \bmod 23$. The result is also \textbf{2}.
     \end{itemize}
 \end{enumerate}
-Now they both have the secret number \textbf{2}, and no one else knows it.
+Now they both have the secret number \textbf{2}, and no one else knows it. In the actual script, $a$ and $b$ are random per run, so concrete values will differ.
 
 \subsection{Man-in-the-Middle Attack on D-H}
 
@@ -272,6 +272,13 @@ By using signatures, we fix the main hole in the D-H protocol.
 Our \texttt{simulate\_authenticated\_exchange()} function demonstrates this defense. Phara receives $(A, Sig(A))$ and checks it with Ana's public RSA key.
 Our script includes simple \texttt{sign} and \texttt{verify} functions. If the signature is valid, the key is authentic. Doomfist cannot create a valid signature because she does not have Ana's private RSA key.
 
+\paragraph{Parameter Binding and Message Format}
+In production designs, the signed data must bind all security-relevant parameters and identities to avoid substitution and unknown key-share issues. Instead of signing only $A$, one should sign a structured message such as
+\begin{equation}
+\mathrm{Sig}_A\big(\,\mathrm{hash}(g \parallel p \parallel A \parallel \text{``Ana''} \parallel \text{``Phara''})\,\big),
+\end{equation}
+and likewise for Phara. Including $(g,p)$ prevents parameter substitution; including identities prevents a third party from replaying values to a different peer.
+
 \subsection{RSA Protocol}
 
 RSA is an asymmetric algorithm used for encryption and signatures.
@@ -294,6 +301,9 @@ Decryption: $M = C^d \bmod n$.
 Our \texttt{rsa\_utils.py} script provides functions for \texttt{is\_prime} (a Miller-Rabin test) and \texttt{mod\_inverse} to build a \texttt{generate\_keypair} function. We used Python's built-in \texttt{pow(e, -1, phi)} for the modular inverse because it is efficient and reliable.
 
 To ensure our generated keys are valid, we implemented the Miller-Rabin primality test in our \texttt{rsa\_utils.py} module. This is a probabilistic algorithm that checks if a number is composite or probably prime. By running the test multiple times (we used $k=5$ rounds), the chance of a composite number being called prime becomes very small.
+
+\paragraph{Constant-time Considerations}
+Modular exponentiation via square-and-multiply performs $O(\log d)$ squarings and, on average, $O(\log d/2)$ multiplies with data-dependent branching. Constant-time implementations avoid key-dependent control flow and memory access, e.g., using fixed-window exponentiation with always-executed operations and table lookups that are independent of secret bits, or Montgomery-ladder style algorithms. Our educational implementation focuses on clarity; real libraries use constant-time big-integer routines.
 
 \subsection{Timing Attack on RSA}
 
@@ -413,95 +423,62 @@ For the timing attack, we needed a key size large enough to make the modular exp
     \item \textbf{Environment Control:} To minimize noise from background processes, we closed other applications during the measurement phase.
 \end{itemize}
 
+\subsection{Reproducibility and Implementation Notes}
+
+To allow others to reproduce our experiment:
+\begin{itemize}
+    \item \textbf{Entry points:} Run \texttt{dh\_exchange.py} for D-H (normal, MitM, authenticated) and \texttt{rsa\_attacks.py} for RSA timing and blinding.
+    \item \textbf{Non-determinism:} Both scripts use Python's \texttt{random} without a fixed seed. This is intentional for realism. For strict reproducibility, one can add \texttt{random.seed(\,)} with a fixed value at the top of each script.
+    \item \textbf{Outliers:} We report average/minimum/maximum/variation directly from raw timings and do not remove outliers. Timing distributions in high-level languages may include occasional spikes from the OS scheduler or GC.
+    \item \textbf{RSA blinding:} The blinding factor \(r\) must be invertible modulo \(n\). In practice this means ensuring \(\gcd(r, n) = 1\). Our code uses \texttt{pow(r, -1, n)}; if \(r\) is not invertible, one should resample \(r\) until it is. This edge case is rare but important in production systems.
+    \item \textbf{Key sizes:} For timing visibility versus runtime, we chose a 512-bit RSA modulus in the experiment script. Real deployments require at least 2048-bit RSA.
+\end{itemize}
+
+\subsection{Correctness Checks}
+
+Before running attack experiments, we validated functional correctness with simple checks:
+\begin{itemize}
+    \item D-H: both parties compute equal shared secret in the absence of an attacker.
+    \item RSA: for random messages $M$ in $[1,n-1]$, \(\mathrm{dec}(\mathrm{enc}(M)) = M\).
+    \item Signatures: \(\mathrm{verify}(A, \mathrm{Sig}_A(A), \mathrm{pk}_A) = \texttt{True}\) and forgeries fail.
+\end{itemize}
+For example, a minimal RSA check in Python:
+\begin{lstlisting}[language=Python,caption={Sanity checks for RSA},label={lst:checks_rsa}]
+e_n, d_n = public_key, private_key
+for _ in range(10):
+    m = random.randint(1, e_n[1]-1)
+    c = pow(m, e_n[0], e_n[1])
+    m2 = vulnerable_decrypt(c, d_n)
+    assert m == m2
+\end{lstlisting}
+
 \section{Results}
 
 This section presents the data generated from executing our Python scripts.
 
 \subsection{D-H Normal vs. MitM Exchange}
 
-Our \texttt{dh\_exchange.py} script first simulates a normal D-H exchange, then simulates the MitM attack. The output from our execution is captured in Table \ref{tab:dh_comparison}.
-
-\begin{table}[htbp]
-\caption{Comparison of Shared Keys in D-H Scenarios}
-\label{tab:dh_comparison}
-\centering
-\begin{tabular}{lcccccc}
-\toprule
-\textbf{Scenario} & \textbf{$a$} & \textbf{$b$} & \textbf{$m$} & \textbf{Ana's} & \textbf{Phara's} & \textbf{Doomfist's} \\
- & & & & \textbf{Secret} & \textbf{Secret} & \textbf{Secrets} \\
-\midrule
-Normal & 15 & 18 & N/A & \textbf{8} & \textbf{8} & N/A \\
-MitM & 21 & 6 & 12 & \textbf{9} & \textbf{8} & (9, 8) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-From Table \ref{tab:dh_comparison}, in the normal run both sides agree on the same secret (\textbf{8}). In the MitM run, Ana ends up with \textbf{9} (shared with Doomfist) and Phara ends up with \textbf{8} (also shared with Doomfist). Doomfist knows both, so she can read/modify everything even though both victims think they are secure.
+Our \texttt{dh\_exchange.py} script first simulates a normal D-H exchange, then simulates the MitM attack. In the normal case, both parties compute the same shared secret. Under MitM, each victim derives a different secret that is shared with the attacker, allowing the attacker to read or modify traffic while both victims believe they are secure. Because our demo uses random keys, exact numeric values vary per run.
 
 \subsection{D-H Defense Validation}
 
-We then ran the \texttt{simulate\_authenticated\_exchange()} function. In this test, Doomfist catches Ana's message $(A, Sig(A))$ and tries to replace it with her own $(M, Fake\_Sig(M))$.
-Phara's client, upon receiving this, runs the \texttt{verify} function. Because Doomfist cannot fake Ana's signature, this verification fails.
-Our script printed the error message: \texttt{Phara: Signature verification FAILED. Attack detected.} Similarly, Ana also detected the attack.
-The defense was 100\% effective in stopping the attack.
-
-After detecting Doomfist's faked messages, Ana and Phara then proceed to exchange their real, signed keys. Both successfully verify each other's authentic signatures, and they compute the same shared secret (12 in our run), confirming that \texttt{SUCCESS: Defense worked. MitM was prevented.} The authentication layer successfully defeats the MitM attack.
+We then ran the \texttt{simulate\_authenticated\_exchange()} function. In this test, the attacker tries to substitute a fake key and signature. Each side verifies the received key using the other party's public RSA key; the fake signature is rejected and the attack is detected. After exchanging their real signed keys, both sides verify successfully and compute the same shared secret. This demonstrates that authentication prevents the MitM in our setup.
 
 \subsection{RSA Timing Attack Analysis}
 
-We ran our \texttt{run\_timing\_experiment()} script from \texttt{rsa\_attacks.py} with 5,000 trials against the \texttt{vulnerable\_decrypt} function. The key was 512 bits.
-
-Our results showed a very high variance in execution time, which is the signature of a timing leak. The detailed statistical distribution of the execution times is presented in Table \ref{tab:timing_stats}.
-
-\begin{table}[htbp]
-\caption{Statistical Distribution of Execution Times (Vulnerable)}
-\label{tab:timing_stats}
-\centering
-\begin{tabular}{lc}
-\toprule
-\textbf{Statistic} & \textbf{Execution Time (ns)} \\
-\midrule
-Minimum Time & 1,808,792 \\
-25th Percentile & 1,820,500 \\
-Median (50\%) & 1,840,100 \\
-Average Time & 1,840,961 \\
-75th Percentile & 1,860,200 \\
-Maximum Time & 2,250,959 \\
-\midrule
-\textbf{Variation (Max - Min)} & \textbf{442,167} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-This huge difference is caused by the non‑constant‑time square‑and‑multiply loop. When a private‑key bit is 1, the code does an extra multiply and runs a bit longer. Over many trials this creates a signal an attacker can use, as Kocher explained \cite{kocher1996}.
+We ran our \texttt{run\_timing\_experiment()} script from \texttt{rsa\_attacks.py} with 5{,}000 trials against the \texttt{vulnerable\_decrypt} function using a 512-bit RSA key. The printed metrics (average, minimum, maximum, and variation) showed a large timing variation, which is the signature of a timing leak. This difference stems from the non‑constant‑time square‑and‑multiply loop: when a private‑key bit is 1, an extra multiply occurs and the code runs slightly longer. Exact values depend on the machine and runtime conditions and are therefore not fixed in this report.
 
 \subsection{RSA Blinding Defense Validation}
 
-We then ran the same timing experiment against our \texttt{blinded\_decrypt} function. The results are shown in Table \ref{tab:blinded_timing}.
-
-\begin{table}[htbp]
-\caption{Timing Statistics for Blinded RSA Decryption}
-\label{tab:blinded_timing}
-\centering
-\begin{tabular}{lc}
-\toprule
-\textbf{Metric} & \textbf{Value} \\
-\midrule
-Average Time & 2,051,034.79 ns ($\approx$2.05 ms) \\
-Min Time & 2,014,042.00 ns \\
-Max Time & 2,595,958.00 ns \\
-Time Variation (Max - Min) & 581,916.00 ns ($\approx$0.58 ms) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The results showed a clear and successful fix for the timing leak. The average time is slightly higher, which is expected due to the extra blinding operations. Although the time variation increased slightly (from $\sim$0.44 ms to $\sim$0.58 ms) due to the overhead of random number generation, the nature of this variation has changed. In the vulnerable version, timing is correlated with the key bits. With blinding, the timing variation is dominated by the random blinding factor $r$, effectively masking the private key signal and rendering the timing side-channel useless.
-
-The change in the standard deviation confirms that the blinding factor effectively hides the private key's influence on execution time. Even if an attacker collects millions of samples, the random noise introduced by the blinding process $r$ washes out the tiny signal from the conditional multiplication.
+We then ran the same timing experiment against our \texttt{blinded\_decrypt} function. The outputs showed that blinding breaks the correlation between decryption time and private‑key bits by randomizing the effective input to the exponentiation. While average time may increase slightly due to blinding overhead, the exploitable timing signal is reduced and no longer aligned with the key. As with all timing measurements in software, exact numbers vary by environment, so we report the qualitative effect rather than fixed values.
 
 \section{Discussion}
 
 This project includes a comparison of two fundamentally different types of attacks and their corresponding defenses.
+
+\subsection{Protocol vs. Implementation Failures}
+
+The D-H MitM targets a \emph{protocol} property: unauthenticated key exchange provides no origin assurance. The RSA timing attack targets an \emph{implementation} property: data-dependent control flow leaks secrets through execution time. These require distinct defenses. Adding authentication (e.g., signatures) repairs the protocol. Making operations constant-time (or applying blinding) repairs the implementation. Mature stacks like TLS 1.3 apply both simultaneously: (EC)DHE with authentication plus constant-time cryptographic libraries.
 
 \subsection{Comparison of Attack Methods (MitM vs. Timing)}
 
@@ -548,6 +525,9 @@ Our study has several limitations inherent to a simulation environment:
     \item \textbf{Network Jitter:} Our timing attack was performed locally. Over a real network (Internet), network latency (jitter) would be orders of magnitude larger than the timing difference caused by the modular exponentiation, making the attack significantly harder (though not impossible) to execute.
     \item \textbf{Python Overhead:} Python is an interpreted language. The overhead of the interpreter introduces noise into the timing measurements that would not be present in a compiled language like C or Assembly. C++ would be a better choice for a production implementation as it allows for fine-grained control over memory and CPU instructions, reducing the noise that might hide a timing leak.
     \item \textbf{Key Size:} We used 512-bit keys for RSA. Modern standards require 2048-bit or 4096-bit keys. While the attack principle remains the same, the timing differences would scale with the key size.
+    \item \textbf{Constant-time caveat:} We did not implement a truly constant-time modular exponentiation. In high-level languages, hidden branches and optimizer behavior can reintroduce timing variance. Blinding is robust in practice, but constant-time code in a low-level language remains the gold standard.
+    \item \textbf{Blinding factor invertibility:} The defense requires choosing \(r\) coprime with \(n\). Although the chance of collision with a prime modulus is negligible, production code must resample on failure and handle errors.
+    \item \textbf{Noise sources:} CPU frequency scaling, OS scheduling, and background services can add variance unrelated to the key. Our experiment does not pin CPU cores or disable turbo/boost features.
 \end{itemize}
 
 \subsection{Ethical Considerations}
@@ -562,7 +542,7 @@ It is very important that we only use the attacks we learned (MitM and Timing) f
 
 \section{Conclusion and Future Work}
 
-To sum up, we built simple versions of D‑H and RSA, showed two classic attacks (MitM and timing), and added two standard defenses (signatures and blinding). Unauthenticated D‑H is not safe against an active attacker, and a non‑constant‑time RSA decrypt leaks timing information. With our defenses, both issues are fixed in our tests. Signatures stop the MitM, and blinding removes the timing signal. The main lesson is: protocols need authentication, and implementations need constant‑time behavior (or blinding). Missing either one can break securit of the `theoritical secure' system.
+To sum up, we built simple versions of D‑H and RSA, showed two classic attacks (MitM and timing), and added two standard defenses (signatures and blinding). Unauthenticated D‑H is not safe against an active attacker, and a non‑constant‑time RSA decrypt leaks timing information. With our defenses, both issues are fixed in our tests. Signatures stop the MitM, and blinding reduces the timing signal. The main lesson is: protocols need authentication, and implementations need constant‑time behavior (or blinding). Missing either one can break the security of a theoretically secure system.
 
 For \textbf{future work}:
 \begin{enumerate}
